@@ -57,7 +57,7 @@ class ControllerExtensionPaymentBkash extends Controller {
         $createURL = $this->config->get('payment_bkash_createCheckoutUrl');
 
         $token = $this->getTokenFrombKash();
-        print_r($token);exit;
+        //print_r($token);exit;
         $header = array(
             'Content-Type:application/json',
             'authorization:' . $token,
@@ -66,7 +66,7 @@ class ControllerExtensionPaymentBkash extends Controller {
 
         $postReq = $this->sendPOST($createURL, $info, $header, "API Title: Create Payment \n");
         $createInfo = json_decode($postReq);
-        print_r($createInfo);exit;
+        //print_r($createInfo);exit;
         if ($createInfo) {
             $createInfo->paymentID;
             if (isset($createInfo->paymentID)) {
