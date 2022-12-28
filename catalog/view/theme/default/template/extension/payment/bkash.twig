@@ -5,92 +5,105 @@
 
     </div>
 </div>
- <script type="text/javascript">
- 
-    $(document).ready(function(){
-     var script = document.createElement("script");  // create a script DOM node
-     //script.src = 'https://code.jquery.com/jquery-1.8.3.min.js';  // set its src to the provided URL
-     //script.src = 'https://scripts.pay.bka.sh/versions/1.2.0-beta/checkout/bKash-checkout.js';  // set its src to the provided URL
-     script.src = 'https://scripts.sandbox.bka.sh/versions/1.1.0-beta/checkout/bKash-checkout-sandbox.js';  // set its src to the provided URL
-	 document.head.appendChild(script);
-        var paymentConfig={
-            createCheckoutURL:"index.php?route=extension/payment/bkash/createPayment",
-            executeCheckoutURL:"index.php?route=extension/payment/bkash/executePayment",
-        };
-		var amount="{{ amount }}";
-        var paymentRequest;
-        paymentRequest = { amount:amount,intent:'sale'};
-		console.log(JSON.stringify(paymentRequest));
-        bKash.init({
-            paymentMode: 'checkout',
-            paymentRequest: paymentRequest,
-            createRequest: function(request){
-                console.log('=> createRequest (request) :: ');
-                console.log(request);
-                
-                $.ajax({
-                    url: paymentConfig.createCheckoutURL,
-                    type:'GET',
-                    contentType: 'application/json',
-                    success: function(data) {
-                        console.log('got data from create  ..');
-                        console.log('data ::=>');
-                        console.log(JSON.stringify(data));
-                        
-                        var obj = JSON.parse(data);
-                        
-                        if(data && obj.paymentID != null){
+<script type="text/javascript"><!--
+    //var script = document.createElement("script");  // create a script DOM node
+    //script.src = 'https://scripts.sandbox.bka.sh/versions/1.2.0-beta/checkout/bKash-checkout-sandbox.js';  // set its src to the provided URL
+
+    //document.head.appendChild(script);
+    
+    var paymentRequest = {};
+    var amount="{{ amount }}";
+    //alert('hi');
+    var paymentID = '';
+    bKash.init({
+        paymentMode: 'checkout', //fixed value ‘checkout’ 
+        paymentRequest: { 
+            amount: amount, //max two decimal points allowed 
+            intent: 'sale' 
+        },
+        //intent options 
+        //1) ‘sale’ – immediate transaction (2 API calls) 
+        //2) ‘authorization’ – deferred transaction (3 API calls) 
+        
+        paymentRequest: paymentRequest,
+        createRequest: function (request) { //request object is basically the paymentRequest object, automatically pushed by the script in createRequest method 
+            $.ajax({
+                url: 'index.php?route=extension/payment/bkash/createPayment',
+                type: 'POST',
+                contentType: 'application/json',
+                success: function (resp) {
+console.log(resp);
+                    var data = jQuery.parseJSON(resp);
+                    
+                    //alert(resp.data);
+                    if (data && data.data)
+                    {
+                        var obj = data.data;
+                        //alert(obj.paymentID);
+                        if (data && obj.paymentID != null) {
                             paymentID = obj.paymentID;
+                            order_id = data.order_id;
                             bKash.create().onSuccess(obj);
-                        }
-                        else {
-							console.log('error');
+                        } else {
+                            console.log('error');
                             bKash.create().onError();
                         }
-                    },
-                    error: function(){
-						console.log('error');
+                    } else {
                         bKash.create().onError();
                     }
-                });
-            },
-            
-            executeRequestOnAuthorization: function(){
-                console.log('=> executeRequestOnAuthorization');
-                $.ajax({
-                    url: paymentConfig.executeCheckoutURL+"?paymentID="+paymentID,
-                    type: 'GET',
-                    contentType:'application/json',
-                    success: function(data){
-                        console.log('got data from execute  ..');
-                        console.log('data ::=>');
-                        console.log(JSON.stringify(data));
-                        
-                        data = JSON.parse(data);
-                        if(data && data.paymentID != null){
-                            alert('[SUCCESS] data : ' + JSON.stringify(data));
-                            window.location.href = "success.html";                              
-                        }
-                        else {
-                            bKash.execute().onError();
-                        }
-                    },
-                    error: function(){
+                },
+                error: function () {
+                    bKash.create().onError();
+                }
+            });
+        },
+        executeRequestOnAuthorization: function () {
+            $.ajax({
+                url: 'index.php?route=extension/payment/bkash/executePayment',
+                type: 'GET',
+                contentType: 'application/json',
+                data: "paymentID=" + paymentID + "&optype=confirm&order_id=" + order_id,
+                success: function (resp) {
+                    var data = JSON.parse(resp);
+                     //alert(data.redirect);
+                   
+                    console.log('got data from execute  ..');
+                    console.log('data ::=>');
+                    console.log(JSON.stringify(data));
+
+                    //data = JSON.parse(data);
+                    if (data.result == 'success') {
+                         window.location.href = data.redirect;
+                        //alert('[SUCCESS] data : ' + JSON.stringify(data));
+                        // window.location.href = "success.html";
+                    } else {
                         bKash.execute().onError();
                     }
-                });
+                },
+                error: function () {
+                    bKash.execute().onError();
+                }
+            });
+        }
+    });
+
+
+
+
+    $('#button-confirm').on('click', function () {
+        $.ajax({
+            type: 'get',
+            url: 'index.php?route=extension/payment/bkash/confirm',
+            cache: false,
+            beforeSend: function () {
+                $('#button-confirm').button('loading');
+            },
+            complete: function () {
+                $('#button-confirm').button('reset');
+            },
+            success: function () {
+                location = '<?php echo $continue; ?>';
             }
         });
-        
-		console.log("Right after init ");
-    
-        
     });
-	
-	function callReconfigure(val){
-        bKash.reconfigure(val);
-    }
-    function clickPayButton(){
-        $("#bKash_button").trigger('click');
-    }
-</script>
+//--></script> 
